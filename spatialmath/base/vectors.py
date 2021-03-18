@@ -15,6 +15,8 @@ import math
 import numpy as np
 from spatialmath.base import getvector
 
+from spatialmath.base.sm_numba import numba_njit, numba_overload
+
 try:  # pragma: no cover
     # print('Using SymPy')
     import sympy
@@ -26,6 +28,7 @@ except ImportError:  # pragma: no cover
 
 _eps = np.finfo(np.float64).eps
 
+import numba
 
 def colvec(v):
     """
@@ -137,6 +140,15 @@ def norm(v):
         return sympy.sqrt(sum)
     else:
         return math.sqrt(sum)
+
+@numba_overload(norm)
+def norm_fast(v):
+    def n(v):
+        sum = 0
+        for x in v:
+            sum += x * x
+        return np.sqrt(sum)
+    return n
 
 def normsq(v):
     """

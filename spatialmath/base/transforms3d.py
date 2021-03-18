@@ -18,6 +18,7 @@ import math
 from math import sin, cos
 import numpy as np
 from spatialmath import base
+import numba
 
 _eps = np.finfo(np.float64).eps
 
@@ -57,6 +58,19 @@ def rotx(theta, unit="rad"):
         [0, ct, -st],
         [0, st, ct]])
     return R
+
+@numba.extending.overload(rotx)
+def fast_rotx(theta, unit="rad"):
+    def n(v):
+        # theta = base.getunit(theta, unit)
+        ct = np.cos(theta)
+        st = np.sin(theta)
+        R = np.array([
+            [1, 0, 0],
+            [0, ct, -st],
+            [0, st, ct]])
+        return R
+    return n
 
 
 # ---------------------------------------------------------------------------------------#
@@ -365,7 +379,6 @@ def isrot(R, check=False, tol=100):
     :seealso: :func:`~spatialmath.base.transformsNd.isR`, :func:`~spatialmath.base.transforms2d.isrot2`,  :func:`~ishom`
     """
     return isinstance(R, np.ndarray) and R.shape == (3, 3) and (not check or base.isR(R, tol=tol))
-
 
 # ---------------------------------------------------------------------------------------#
 def rpy2r(roll, pitch=None, yaw=None, *, unit='rad', order='zyx'):

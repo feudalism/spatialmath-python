@@ -12,7 +12,13 @@ from spatialmath.base.symbolic import *      # lgtm [py/polluting-import]
 from spatialmath.base.animate import *       # lgtm [py/polluting-import]
 from spatialmath.base.graphics import *       # lgtm [py/polluting-import]
 
+# from spatialmath.base.sm_numba import use_numba, numba_njit, using_numba
+# from spatialmath.base.sm_numba import *
+
 __all__ = [
+    # 'use_numba',
+    # 'numba_njit',
+    # 'using_numba',
 # spatialmath.base.argcheck
     'assertmatrix',
     'ismatrix',

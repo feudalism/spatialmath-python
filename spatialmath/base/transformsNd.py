@@ -288,7 +288,6 @@ def Ab2M(A, b):
 
 # ======================= predicates
 
-
 def isR(R, tol=100):
     r"""
     Test if matrix belongs to SO(n)
@@ -312,8 +311,9 @@ def isR(R, tol=100):
 
     :seealso: isrot2, isrot
     """
-    return np.linalg.norm(R@R.T - np.eye(R.shape[0])) < tol * _eps \
-        and np.linalg.det(R@R.T) > 0
+    pre = R@R.T
+    return np.linalg.norm(pre - np.eye(R.shape[0])) < tol * _eps \
+        and np.linalg.det(pre) > 0
 
 
 def isskew(S, tol=10):

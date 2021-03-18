@@ -8,10 +8,14 @@ import sys
 import math
 import numpy as np
 from spatialmath import base
+# import spatialmath.base as base
+import numba
+
+from spatialmath.base.sm_numba import numba_njit
 
 _eps = np.finfo(np.float64).eps
 
-
+@numba.njit
 def eye():
     """
     Create an identity quaternion
@@ -29,7 +33,7 @@ def eye():
         >>> qprint(q)
 
     """
-    return np.r_[1, 0, 0, 0]
+    return np.array([1.0, 0.0, 0.0, 0.0])
 
 
 def pure(v):
@@ -493,6 +497,9 @@ def q2r(q):
                      [2 * (x * z - s * y), 2 * (y * z + s * x), 1 - 2 * (x ** 2 + y ** 2)]])
 
 
+# @numba.njit
+
+@numba_njit
 def r2q(R, check=False, tol=100):
     """
     Convert SO(3) rotation matrix to unit-quaternion
@@ -522,10 +529,11 @@ def r2q(R, check=False, tol=100):
 
     :seealso: :func:`q2r`
     """
-    if not base.isrot(R, check=check, tol=tol):
-        raise ValueError("Argument must be a valid SO(3) matrix")
+    # if not base.isrot(R, check=check, tol=tol):
+    #     print('a')
+    #     raise ValueError("Argument must be a valid SO(3) matrix")
 
-    qs = math.sqrt(max(0, np.trace(R) + 1)) / 2.0  # scalar part
+    qs = np.sqrt(max(0, np.trace(R) + 1)) / 2.0  # scalar part
     kx = R[2, 1] - R[1, 2]  # Oz - Ay
     ky = R[0, 2] - R[2, 0]  # Ax - Nz
     kz = R[1, 0] - R[0, 1]  # Ny - Ox
@@ -555,13 +563,13 @@ def r2q(R, check=False, tol=100):
         ky = ky - ky1
         kz = kz - kz1
 
-    kv = np.r_[kx, ky, kz]
-    nm = np.linalg.norm(kv)
+    kv = np.array([qs, kx, ky, kz])
+    nm = base.norm(kv[1:])
     if abs(nm) < tol * _eps:
         return eye()
     else:
-        return np.r_[qs, (math.sqrt(1.0 - qs ** 2) / nm) * kv]
-
+        kv[1:] = (np.sqrt(1.0 - qs ** 2) / nm) * kv[1:]
+        return kv
 
 def slerp(q0, q1, s, shortest=False):
     """
