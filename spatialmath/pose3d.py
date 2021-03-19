@@ -31,7 +31,6 @@ from spatialmath.super_pose import SMPose
 
 # ============================== SO3 =====================================#
 
-
 class SO3(SMPose):  
     """
     SO(3) matrix class
@@ -883,6 +882,9 @@ class SE3(SO3):
         return base.ishom(x, check=check)
 
     # ---------------- variant constructors ---------------------------------- #
+
+
+
 
     @classmethod
     def Rx(cls, theta, unit='rad', t=None):

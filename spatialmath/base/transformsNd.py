@@ -20,6 +20,8 @@ from spatialmath import base
 # from spatialmath.base import argcheck
 # from spatialmath.base import symbolic as sym
 
+from spatialmath.base.sm_numba import numba_njit, numba_overload
+
 try:  # pragma: no cover
     # print('Using SymPy')
     from sympy import Matrix
@@ -62,6 +64,7 @@ def r2t(R, check=False):
     """
     if not isinstance(R, np.ndarray):
         raise ValueError('argument must be NumPy array')
+        
     dim = R.shape
     if dim[0] != dim[1]:
         raise ValueError('Matrix must be square')
@@ -85,6 +88,19 @@ def r2t(R, check=False):
     T[-1, -1] = 1
 
     return T
+
+@numba_overload(r2t)
+def r2t_numba(R, check=False):
+    def n(R, check=False):
+        T = np.zeros((4, 4))
+        T[:3,:3] = R
+        T[-1, -1] = 1
+        return T
+    return n
+
+@numba_njit
+def r2t_fast(R, check=False):
+    return r2t(R, check=False)
 
 # ---------------------------------------------------------------------------------------#
 def t2r(T, check=False):

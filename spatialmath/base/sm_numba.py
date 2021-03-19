@@ -1,6 +1,7 @@
 
 # _numba = True
 from functools import wraps
+import os
 
 try:
     global _numba
@@ -10,19 +11,23 @@ except ImportError:
     # global _numba
     _numba = False
 
+
 # Equivalent to @numba.njit
 def numba_njit(func):
     if _numba:
-        junc = numba.njit(func)
+        return (numba.njit(cache=True))(func)
+    else:
+        return func
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if _numba:
-            return junc(*args, **kwargs)
-        else:
-            return func(*args, **kwargs)
+    # @wraps(func)
+    # def wrapper(*args, **kwargs):
+    #     if _numba:
+    #         return junc(*args, **kwargs)
+    #     else:
+    #         return func(*args, **kwargs)
 
-    return wrapper
+    # return wrapper
+
 
 # Equivalent to @numba.extending.overload(method)
 def numba_overload(method):
@@ -34,9 +39,11 @@ def numba_overload(method):
     
     return decor
 
+
 def use_numba(use_numba):
     global _numba
     _numba = use_numba
+
 
 def using_numba():
     global _numba

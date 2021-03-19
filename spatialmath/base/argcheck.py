@@ -15,98 +15,10 @@ import math
 import numpy as np
 from spatialmath.base import symbolic as sym
 
+from spatialmath.base.sm_numba import numba_njit, numba_overload
+
 # valid scalar types
 _scalartypes = (int, np.integer, float, np.floating) + sym.symtype
-
-
-# def getunit(v, unit='rad'):
-#     """
-#     Convert value according to angular units
-
-#     :param v: the value in radians or degrees
-#     :type v: array_like(m) or ndarray(m)
-#     :param unit: the angular unit, "rad" or "deg"
-#     :type unit: str
-#     :return: the converted value in radians
-#     :rtype: list(m) or ndarray(m)
-#     :raises ValueError: argument is not a valid angular unit
-
-#     .. runblock:: pycon
-
-#         >>> from spatialmath.base import getunit
-#         >>> import numpy as np
-#         >>> getunit(1.5, 'rad')
-#         >>> getunit(90, 'deg')
-#         >>> getunit([90, 180], 'deg')
-#         >>> getunit(np.r_[0.5, 1], 'rad')
-#         >>> getunit(np.r_[90, 180], 'deg')
-#     """
-#     if unit == "rad":
-#         return v
-#     elif unit == "deg":
-#         if isinstance(v, np.ndarray) or np.isscalar(v):
-#             return v * math.pi / 180
-#         else:
-#             return [x * math.pi / 180 for x in v]
-#     else:
-#         raise ValueError("invalid angular units")
-
-# @numba.generated_jit(nopython=True)
-# def getunit(v, unit='rad'):
-#     """
-#     Convert value according to angular units
-
-#     :param v: the value in radians or degrees
-#     :type v: array_like(m) or ndarray(m)
-#     :param unit: the angular unit, "rad" or "deg"
-#     :type unit: str
-#     :return: the converted value in radians
-#     :rtype: list(m) or ndarray(m)
-#     :raises ValueError: argument is not a valid angular unit
-
-#     .. runblock:: pycon
-
-#         >>> from spatialmath.base import getunit
-#         >>> import numpy as np
-#         >>> getunit(1.5, 'rad')
-#         >>> getunit(90, 'deg')
-#         >>> getunit([90, 180], 'deg')
-#         >>> getunit(np.r_[0.5, 1], 'rad')
-#         >>> getunit(np.r_[90, 180], 'deg')
-#     """
-
-#     @numba.njit
-#     def conv(v, unit):
-#         if unit == "rad":
-#             return v
-#         elif unit == "deg":
-#             return v * math.pi / 180
-
-#     @numba.njit
-#     def conv_l(v, unit):
-#         if unit == "rad":
-#             return v
-#         elif unit == "deg":
-#             return [y * np.pi / 180 for y in x]
-
-#     if isinstance(v, np.ndarray) or isinstance(v, numba.types.Float):
-#         return lambda a, b: conv(a, b)
-
-#     # elif isinstance(v, list):
-#     #     return lambda a, b: conv_l(a, b)
-
-#     # if unit == "rad":
-#     #     # return v
-#     #     return lambda v: v
-#     # elif unit == "deg":
-#     #     if isinstance(v, np.ndarray) or np.isscalar(v):
-#     #         # return v * math.pi / 180
-#     #         return lambda x: x * np.pi / 180
-#     #     else:
-#     #         # return [x * math.pi / 180 for x in v]
-#     #         return lambda x: [y * np.pi / 180 for y in x]
-#     # else:
-#     #     raise ValueError("invalid angular units")
 
 def isscalar(x):
     """
@@ -536,6 +448,21 @@ def getunit(v, unit='rad'):
             return [x * math.pi / 180 for x in v]
     else:
         raise ValueError("invalid angular units")
+
+@numba_overload(getunit)
+def getunit_numba(v, unit='rad'):
+    def n(v, unit='rad'):
+        if unit == "rad":
+            return v
+        elif unit == "deg":
+            return v * np.pi / 180.0
+        else:
+            return v
+    return n
+
+@numba_njit
+def getunit_fast(v, unit='rad'):
+    return getunit(v, unit='rad')
 
 
 def isnumberlist(x):

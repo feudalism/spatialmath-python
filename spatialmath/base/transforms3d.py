@@ -13,12 +13,14 @@ tuple, numpy array, numpy row vector or numpy column vector.
 
 # pylint: disable=invalid-name
 
+import numba
 import sys
 import math
 from math import sin, cos
 import numpy as np
 from spatialmath import base
-import numba
+from spatialmath.base.sm_numba import numba_njit, numba_overload
+
 
 _eps = np.finfo(np.float64).eps
 
@@ -59,21 +61,28 @@ def rotx(theta, unit="rad"):
         [0, st, ct]])
     return R
 
-@numba.extending.overload(rotx)
-def fast_rotx(theta, unit="rad"):
-    def n(v):
-        # theta = base.getunit(theta, unit)
+
+@numba_overload(rotx)
+def rotx_numba(theta, unit="rad"):
+    def n(theta, unit="rad"):
+        theta = base.getunit(theta, unit)
         ct = np.cos(theta)
         st = np.sin(theta)
         R = np.array([
-            [1, 0, 0],
+            [1.0, 0, 0],
             [0, ct, -st],
             [0, st, ct]])
         return R
     return n
 
 
+@numba_njit
+def rotx_fast(theta, unit="rad"):
+    return rotx(theta, unit="rad")
+
 # ---------------------------------------------------------------------------------------#
+
+
 def roty(theta, unit="rad"):
     """
     Create SO(3) rotation about Y-axis
@@ -103,13 +112,33 @@ def roty(theta, unit="rad"):
     ct = base.sym.cos(theta)
     st = base.sym.sin(theta)
     R = np.array([
-        [ct, 0, st],
+        [ct, 0.0, st],
         [0, 1, 0],
         [-st, 0, ct]])
     return R
 
 
+@numba_overload(roty)
+def roty_numba(theta, unit="rad"):
+    def n(theta, unit="rad"):
+        theta = base.getunit(theta, unit)
+        ct = np.cos(theta)
+        st = np.sin(theta)
+        R = np.array([
+            [ct, 0.0, st],
+            [0.0, 1.0, 0.0],
+            [-st, 0.0, ct]])
+        return R
+    return n
+
+
+@numba_njit
+def roty_fast(theta, unit="rad"):
+    return roty(theta, unit="rad")
+
 # ---------------------------------------------------------------------------------------#
+
+
 def rotz(theta, unit="rad"):
     """
     Create SO(3) rotation about Z-axis
@@ -144,7 +173,27 @@ def rotz(theta, unit="rad"):
     return R
 
 
+@numba_overload(rotz)
+def rotz_numba(theta, unit="rad"):
+    def n(theta, unit="rad"):
+        theta = base.getunit(theta, unit)
+        ct = np.cos(theta)
+        st = np.sin(theta)
+        R = np.array([
+            [ct, -st, 0.0],
+            [st, ct, 0.0],
+            [0.0, 0, 1]])
+        return R
+    return n
+
+
+@numba_njit
+def rotz_fast(theta, unit="rad"):
+    return rotz(theta, unit="rad")
+
 # ---------------------------------------------------------------------------------------#
+
+
 def trotx(theta, unit="rad", t=None):
     """
     Create SE(3) pure rotation about X-axis
@@ -172,7 +221,7 @@ def trotx(theta, unit="rad", t=None):
     :seealso: :func:`~rotx`
     :SymPy: supported
     """
-    T = base.r2t(rotx(theta, unit))
+    T = base.r2t_fast(rotx_fast(theta, unit))
     if t is not None:
         T[:3, 3] = base.getvector(t, 3, 'array')
     return T
@@ -206,7 +255,7 @@ def troty(theta, unit="rad", t=None):
     :seealso: :func:`~roty`
     :SymPy: supported
     """
-    T = base.r2t(roty(theta, unit))
+    T = base.r2t_fast(roty_fast(theta, unit))
     if t is not None:
         T[:3, 3] = base.getvector(t, 3, 'array')
     return T
@@ -240,7 +289,7 @@ def trotz(theta, unit="rad", t=None):
     :seealso: :func:`~rotz`
     :SymPy: supported
     """
-    T = base.r2t(rotz(theta, unit))
+    T = base.r2t_fast(rotz_fast(theta, unit))
     if t is not None:
         T[:3, 3] = base.getvector(t, 3, 'array')
     return T
@@ -311,7 +360,7 @@ def transl(x, y=None, z=None):
         return x[:3, 3]
     else:
         raise ValueError('bad argument')
-    
+
     T = np.identity(4, dtype=t.dtype)
     T[:3, 3] = t
     return T
@@ -381,6 +430,8 @@ def isrot(R, check=False, tol=100):
     return isinstance(R, np.ndarray) and R.shape == (3, 3) and (not check or base.isR(R, tol=tol))
 
 # ---------------------------------------------------------------------------------------#
+
+
 def rpy2r(roll, pitch=None, yaw=None, *, unit='rad', order='zyx'):
     """
     Create an SO(3) rotation matrix from roll-pitch-yaw angles
@@ -876,7 +927,8 @@ def tr2eul(T, unit='rad', flip=False, check=False):
         sp = 0
         cp = 1
         eul[1] = math.atan2(cp * R[0, 2] + sp * R[1, 2], R[2, 2])
-        eul[2] = math.atan2(-sp * R[0, 0] + cp * R[1, 0], -sp * R[0, 1] + cp * R[1, 1])
+        eul[2] = math.atan2(-sp * R[0, 0] + cp * R[1, 0], -
+                            sp * R[0, 1] + cp * R[1, 1])
     else:
         if flip:
             eul[0] = math.atan2(-R[1, 2], -R[0, 2])
@@ -885,7 +937,8 @@ def tr2eul(T, unit='rad', flip=False, check=False):
         sp = math.sin(eul[0])
         cp = math.cos(eul[0])
         eul[1] = math.atan2(cp * R[0, 2] + sp * R[1, 2], R[2, 2])
-        eul[2] = math.atan2(-sp * R[0, 0] + cp * R[1, 0], -sp * R[0, 1] + cp * R[1, 1])
+        eul[2] = math.atan2(-sp * R[0, 0] + cp * R[1, 0], -
+                            sp * R[0, 1] + cp * R[1, 1])
 
     if unit == 'deg':
         eul *= 180 / math.pi
@@ -1003,7 +1056,7 @@ def tr2rpy(T, unit='rad', order='zyx', check=False):
     elif order == 'yxz' or order == 'camera':
 
         if abs(abs(R[1, 2]) - 1) < 10 * _eps:  # when |R23| == 1
-                # singularity
+            # singularity
             rpy[0] = 0
             if R[1, 2] < 0:
                 rpy[2] = -math.atan2(R[2, 0], R[0, 0])   # R-Y
@@ -1090,7 +1143,8 @@ def trlog(T, check=True, twist=False):
                 S = trlog(R, check=False)  # recurse
                 w = base.vex(S)
                 theta = base.norm(w)
-                Ginv = np.eye(3) - S / 2 + (1 / theta - 1 / math.tan(theta / 2) / 2) / theta * S @ S
+                Ginv = np.eye(3) - S / 2 + (1 / theta - 1 /
+                                            math.tan(theta / 2) / 2) / theta * S @ S
                 v = Ginv @ t
                 if twist:
                     return np.r_[v, w]
@@ -1214,7 +1268,8 @@ def trexp(S, theta=None, check=True):
             if theta == 0:
                 return np.eye(4)
             elif not base.isunittwist(tw):
-                raise ValueError("If theta is specified S must be a unit twist")
+                raise ValueError(
+                    "If theta is specified S must be a unit twist")
 
         t = tw[0:3]
         w = tw[3:6]
@@ -1222,7 +1277,8 @@ def trexp(S, theta=None, check=True):
         R = base.rodrigues(w, theta)
 
         skw = base.skew(w)
-        V = np.eye(3) * theta + (1.0 - math.cos(theta)) * skw + (theta - math.sin(theta)) * skw @ skw
+        V = np.eye(3) * theta + (1.0 - math.cos(theta)) * \
+            skw + (theta - math.sin(theta)) * skw @ skw
 
         return base.rt2tr(R, V@t)
 
@@ -1243,7 +1299,8 @@ def trexp(S, theta=None, check=True):
         # do Rodrigues' formula for rotation
         return base.rodrigues(w, theta)
     else:
-        raise ValueError(" First argument must be SO(3), 3-vector, SE(3) or 6-vector")
+        raise ValueError(
+            " First argument must be SO(3), 3-vector, SE(3) or 6-vector")
 
 
 def trnorm(T):
@@ -1345,7 +1402,7 @@ def trinterp(start, end, s=None):
     :seealso: :func:`spatialmath.base.quaternions.slerp`, :func:`~spatialmath.base.transforms3d.trinterp2`
     """
 
-    if not 0 <= s <= 1: 
+    if not 0 <= s <= 1:
         raise ValueError("s outside interval [0,1]")
 
     if base.ismatrix(end, (3, 3)):
@@ -1442,10 +1499,10 @@ def trinv(T):
     # inline this code for speed, don't use tr2rt and rt2tr
     R = T[:3, :3]
     t = T[:3, 3]
-    Ti = np.zeros((4,4), dtype=T.dtype)
+    Ti = np.zeros((4, 4), dtype=T.dtype)
     Ti[:3, :3] = R.T
     Ti[:3, 3] = -R.T @ t
-    Ti[3,3] = 1
+    Ti[3, 3] = 1
     return Ti
 
 
@@ -1525,7 +1582,7 @@ def tr2jac(T):
         >>> from spatialmath.base import *
         >>> T = trotx(0.3, t=[4,5,6])
         >>> tr2jac(T)
-    
+
     :Reference: Robotics, Vision & Control: Second Edition, P. Corke, Springer 2016; p65.
     :SymPy: supported
     """
@@ -1536,6 +1593,7 @@ def tr2jac(T):
     Z = np.zeros((3, 3), dtype=T.dtype)
     R = base.t2r(T)
     return np.block([[R, Z], [Z, R]])
+
 
 def eul2jac(*angles):
     """
@@ -1577,7 +1635,7 @@ def eul2jac(*angles):
 
     if len(angles) == 1:
         angles = angles[0]
-    
+
     phi = angles[0]
     theta = angles[1]
 
@@ -1587,10 +1645,10 @@ def eul2jac(*angles):
     sphi = base.sym.sin(phi)
 
     return np.array([
-            [ 0, -sphi, cphi * stheta],
-            [ 0,  cphi, sphi * stheta],
-            [ 1,     0, ctheta ]
-        ])
+        [0, -sphi, cphi * stheta],
+        [0,  cphi, sphi * stheta],
+        [1,     0, ctheta]
+    ])
 
 
 def rpy2jac(*angles, order='zyx'):
@@ -1645,40 +1703,41 @@ def rpy2jac(*angles, order='zyx'):
 
     :seealso: :func:`eul2jac`, :func:`rpy2r`
     """
-    
+
     if len(angles) == 1:
         angles = angles[0]
-    
+
     pitch = angles[1]
     yaw = angles[2]
-    
+
     cp = base.sym.cos(pitch)
     sp = base.sym.sin(pitch)
     cy = base.sym.cos(yaw)
     sy = base.sym.sin(yaw)
-    
+
     if order == 'xyz':
-        J = np.array([	
-            [ sp,       0,   1], 
+        J = np.array([
+            [sp,       0,   1],
             [-cp * sy,  cy,  0],
-            [ cp * cy,  sy,  0]
+            [cp * cy,  sy,  0]
         ])
-    
+
     elif order == 'zyx':
-        J = np.array([	 
-                [ cp * cy, -sy, 0],
-                [ cp * sy,  cy, 0],
-                [-sp,       0,  1],
-            ])
-    
+        J = np.array([
+            [cp * cy, -sy, 0],
+            [cp * sy,  cy, 0],
+            [-sp,       0,  1],
+        ])
+
     elif order == 'yxz':
-        J = np.array([	
-                [ cp * sy,  cy, 0],
-                [-sp,       0,  1],
-                [ cp * cy, -sy, 0]
-            ])
+        J = np.array([
+            [cp * sy,  cy, 0],
+            [-sp,       0,  1],
+            [cp * cy, -sy, 0]
+        ])
     return J
-    
+
+
 def tr2adjoint(T):
     r"""
     SE(3) adjoint matrix
@@ -1701,31 +1760,31 @@ def tr2adjoint(T):
         >>> from spatialmath.base import *
         >>> T = trotx(0.3, t=[4,5,6])
         >>> tr2adjoint(T)
-    
+
     :Reference: 
         - Robotics, Vision & Control: Second Edition, P. Corke, Springer 2016; p65.
         - `Lie groups for 2D and 3D Transformations <http://ethaneade.com/lie.pdf>_
 
     :SymPy: supported
     """
-    
+
     Z = np.zeros((3, 3), dtype=T.dtype)
-    if T.shape == (3,3):
+    if T.shape == (3, 3):
         # SO(3) adjoint
         return np.block([
-                    [R, Z],
-                    [Z, R]
-                ])
-    elif T.shape == (4,4):
+            [R, Z],
+            [Z, R]
+        ])
+    elif T.shape == (4, 4):
         # SE(3) adjoint
         (R, t) = base.tr2rt(T)
         return np.block([
-                    [R, base.skew(t) @ R], 
-                    [Z, R]
-                ])
+            [R, base.skew(t) @ R],
+            [Z, R]
+        ])
     else:
         raise ValueError('bad argument')
-        
+
 
 def trprint(T, orient='rpy/zyx', label=None, file=sys.stdout, fmt='{:8.2g}', degsym=True, unit='deg'):
     """
@@ -1843,8 +1902,9 @@ def _vec2s(fmt, v):
 try:
     import matplotlib.pyplot as plt
     _matplotlib_exists = True
-except ImportError:  # pragma: no cover      
+except ImportError:  # pragma: no cover
     _matplotlib_exists = False
+
 
 def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # pylint: disable=unused-argument,function-redefined
            textcolor=None, labels=('X', 'Y', 'Z'), length=1, style='arrow',
@@ -1934,7 +1994,7 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
     if not _matplotlib_exists:
         print('matplotlib is not installed: pip install matplotlib')
         return
-        
+
     if axes is None:
         # create an axes
         fig = plt.gcf()
@@ -1956,7 +2016,7 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
     if anaglyph is not None:
         # enforce perspective projection
         ax.set_proj_type('persp')
-        
+
         # collect all the arguments to use for left and right views
         args = {
             'axes': ax,
@@ -2007,9 +2067,9 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
         # assume it is an iterable
         for Tk in T:
             trplot(Tk, axes=ax, block=block, dims=dims, color=color, frame=frame,
-                textcolor=textcolor, labels=labels, length=length, style=style,
-                projection=projection, wtl=wtl, width=width, d1=d1,
-                d2=d2, anaglyph=anaglyph, **kwargs)
+                   textcolor=textcolor, labels=labels, length=length, style=style,
+                   projection=projection, wtl=wtl, width=width, d1=d1,
+                   d2=d2, anaglyph=anaglyph, **kwargs)
         return
 
     if dims is not None:
@@ -2028,18 +2088,24 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
     # draw the axes
 
     if style == 'arrow':
-        ax.quiver(o[0], o[1], o[2], x[0] - o[0], x[1] - o[1], x[2] - o[2], arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
-        ax.quiver(o[0], o[1], o[2], y[0] - o[0], y[1] - o[1], y[2] - o[2], arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
-        ax.quiver(o[0], o[1], o[2], z[0] - o[0], z[1] - o[1], z[2] - o[2], arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
-        
+        ax.quiver(o[0], o[1], o[2], x[0] - o[0], x[1] - o[1], x[2] - o[2],
+                  arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
+        ax.quiver(o[0], o[1], o[2], y[0] - o[0], y[1] - o[1], y[2] - o[2],
+                  arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
+        ax.quiver(o[0], o[1], o[2], z[0] - o[0], z[1] - o[1], z[2] - o[2],
+                  arrow_length_ratio=wtl, linewidth=width, facecolor=color, edgecolor=color)
+
         # plot some points
         #  invisible point at the end of each arrow to allow auto-scaling to work
-        ax.scatter(xs=[o[0], x[0], y[0], z[0]], ys=[o[1], x[1], y[1], z[1]], zs=[o[2], x[2], y[2], z[2]], 
-            s=[0, 0, 0, 0])
+        ax.scatter(xs=[o[0], x[0], y[0], z[0]], ys=[o[1], x[1], y[1], z[1]], zs=[o[2], x[2], y[2], z[2]],
+                   s=[0, 0, 0, 0])
     elif style == 'line':
-        ax.plot([o[0], x[0]], [o[1], x[1]], [o[2], x[2]], color=colors[0], linewidth=width)
-        ax.plot([o[0], y[0]], [o[1], y[1]], [o[2], y[2]], color=colors[1], linewidth=width)
-        ax.plot([o[0], z[0]], [o[1], z[1]], [o[2], z[2]], color=colors[2], linewidth=width)
+        ax.plot([o[0], x[0]], [o[1], x[1]], [o[2], x[2]],
+                color=colors[0], linewidth=width)
+        ax.plot([o[0], y[0]], [o[1], y[1]], [o[2], y[2]],
+                color=colors[1], linewidth=width)
+        ax.plot([o[0], z[0]], [o[1], z[1]], [o[2], z[2]],
+                color=colors[2], linewidth=width)
 
     if origindot > 0:
         ax.scatter(xs=[o[0]], ys=[o[1]], zs=[o[2]], color=color, s=origindot)
@@ -2050,7 +2116,8 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
             color = textcolor
 
         o1 = T @ np.array([-d1, -d1, -d1, 1])
-        ax.text(o1[0], o1[1], o1[2], r'$\{' + frame + r'\}$', color=color, verticalalignment='top', horizontalalignment='center')
+        ax.text(o1[0], o1[1], o1[2], r'$\{' + frame + r'\}$', color=color,
+                verticalalignment='top', horizontalalignment='center')
 
         # add the labels to each axis
 
@@ -2058,14 +2125,18 @@ def trplot(T, axes=None, block=False, dims=None, color='blue', frame=None,   # p
         y = (y - o) * d2 + o
         z = (z - o) * d2 + o
 
-        ax.text(x[0], x[1], x[2], "$%c_{%s}$" % (labels[0], frame), color=color, horizontalalignment='center', verticalalignment='center')
-        ax.text(y[0], y[1], y[2], "$%c_{%s}$" % (labels[1], frame), color=color, horizontalalignment='center', verticalalignment='center')
-        ax.text(z[0], z[1], z[2], "$%c_{%s}$" % (labels[2], frame), color=color, horizontalalignment='center', verticalalignment='center')
+        ax.text(x[0], x[1], x[2], "$%c_{%s}$" % (
+            labels[0], frame), color=color, horizontalalignment='center', verticalalignment='center')
+        ax.text(y[0], y[1], y[2], "$%c_{%s}$" % (
+            labels[1], frame), color=color, horizontalalignment='center', verticalalignment='center')
+        ax.text(z[0], z[1], z[2], "$%c_{%s}$" % (
+            labels[2], frame), color=color, horizontalalignment='center', verticalalignment='center')
 
     if block:
         # calling this at all, causes FuncAnimation to fail so when invoked from tranimate skip this bit
         plt.show(block=block)
     return ax
+
 
 def tranimate(T, **kwargs):
     """
@@ -2084,7 +2155,7 @@ def tranimate(T, **kwargs):
     :param movie: name of file to write MP4 movie into
     :type movie: str
     :param **kwargs: arguments passed to ``trplot``
-    
+
     - ``tranimate(T)`` where ``T`` is an SO(3) or SE(3) matrix, animates a 3D
       coordinate frame moving from the world frame to the frame ``T`` in
       ``nsteps``.
@@ -2097,7 +2168,7 @@ def tranimate(T, **kwargs):
 
             >>> tranimate(transl(1,2,3)@trotx(1), frame='A', arrow=False, dims=[0, 5])
             >>> tranimate(transl(1,2,3)@trotx(1), frame='A', arrow=False, dims=[0, 5], movie='spin.mp4')
-    
+
     .. note:: For Jupyter this works with the ``notebook`` and ``TkAgg``
         backends.
 
@@ -2107,7 +2178,7 @@ def tranimate(T, **kwargs):
     .. note:: When saving animation to a file the animation does not appear
         on screen.  A ``StopIteration`` exception may occur, this seems to 
         be a matplotlib bug #19599
-        
+
     :SymPy: not supported
 
     :seealso: `trplot`, `plotvol3`
@@ -2125,9 +2196,9 @@ def tranimate(T, **kwargs):
 
     plt.show(block=block)
 
+
 if __name__ == '__main__':  # pragma: no cover
     import pathlib
 
-    exec(open(pathlib.Path(__file__).parent.parent.parent.absolute() / "tests" / "base" / "test_transforms3d.py").read())  # pylint: disable=exec-used
-    
-
+    exec(open(pathlib.Path(__file__).parent.parent.parent.absolute() / "tests" /
+         "base" / "test_transforms3d.py").read())  # pylint: disable=exec-used

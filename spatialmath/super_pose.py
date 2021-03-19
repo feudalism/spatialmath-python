@@ -1471,6 +1471,10 @@ class SMPose(SMUserList):
             else:
                 return [op(x, right) for x in left.A]
 
+
+
+
+
 if __name__ == "__main__":
     from spatialmath import SE3
     x = SE3.Rand(N=6)
