@@ -143,7 +143,7 @@ class Animate:
                 self.start = start
 
         # draw axes at the origin
-        base.trplot(self.start, axes=self, **kwargs)
+        base.trplot(self.start, **kwargs)
 
     def run(
         self,
