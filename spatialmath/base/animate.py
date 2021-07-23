@@ -187,7 +187,10 @@ class Animate:
             # seemingly the animation framework isn't checking StopException
             # so there is no way to know when this is no longer called.
             # we implement a rather hacky heartbeat style timeout
-
+            print('update -- frame')
+            print(frame)
+            input()
+            
             if isinstance(frame, float):
                 # passed a single transform, interpolate it
                 T = base.trinterp(start=self.start, end=self.end, s=frame)
@@ -200,6 +203,9 @@ class Animate:
                 T = base.r2t(T)
 
             # update the scene
+            print('T')
+            print(T)
+            print('anim.draw')
             animation._draw(T)
 
             self.count += 1  # say we're still running
@@ -275,7 +281,11 @@ class Animate:
         return [x.h for x in self.displaylist]
 
     def _draw(self, T):
+        print('draw')
+        print('self.displaylist')
+        print(self.displaylist)
         for x in self.displaylist:
+            print('drawing')
             x.draw(T)
 
     # ------------------- plot()
