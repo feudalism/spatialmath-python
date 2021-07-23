@@ -876,7 +876,7 @@ class BasePoseMatrix(BasePoseList):
             if self.N == 2:
                 base.tranimate2(self.data, *args, **kwargs)
             else:
-                base.tranimate(self.data, *args, **kwargs)
+                base.tranimate(self.data, *args, start=start, **kwargs)
         else:
             # singleton case
             if self.N == 2:
