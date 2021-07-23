@@ -2835,9 +2835,11 @@ def tranimate(T, **kwargs):
 
     anim = base.animate.Animate(**kwargs)
     anim.trplot(T, **kwargs)
-    anim.run(**kwargs)
+    ani = anim.run(**kwargs)
 
     plt.show(block=block)
+
+    return ani
 
 
 if __name__ == "__main__":  # pragma: no cover

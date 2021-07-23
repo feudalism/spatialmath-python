@@ -250,6 +250,8 @@ class Animate:
                 if len(_ani.event_source.callbacks) == 0:
                     break
 
+        return _ani
+
     def __repr__(self):
         """
         Human readable version of the display list
